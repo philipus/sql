@@ -1,0 +1,49 @@
+CREATE TABLE #trx (
+left_id INT PRIMARY KEY,
+right_id INT REFERENCES trx,
+date datetime
+);
+-----
+-----
+INSERT INTO #trx VALUES 
+(6, 8, '20180301'),
+(3, 5, '20180101'),
+(4, 8, '20180201'),
+(1, 3, '20180101'),
+(8, 3, '20180201'),
+(2, 1, '20180101'),
+(7, 4, '20180201');
+-----
+-----
+select * from #trx
+;
+-----
+-----
+WITH traverse AS (
+        SELECT left_id id, left_id , right_id,  date, 0 as depth, 
+			cast ( cast(left_id as char(1)) + '-' + cast(right_id as char(1)) as varchar(1000)) as ed_id FROM #trx
+        -- WHERE dependent_id = 3
+    UNION ALL
+        SELECT tr.id ,trx.left_id, trx.right_id, trx.date, tr.depth + 1 as depth,
+			cast( cast(trx.left_id as char(1)) + '-' + cast(trx.right_id as char(1))  + '|' + tr.ed_id as varchar(1000)) as ed_id 
+		FROM #trx trx
+			INNER JOIN traverse tr
+				ON trx.right_id = tr.left_id
+		where trx.date = tr.date
+)
+SELECT id, left_id , right_id, date, depth, ed_id 
+--, ROW_NUMBER() over (partition by id order by depth desc) rn
+FROM traverse
+ORDER BY depth;
+
+
+WITH RECURSIVE traverse(id, depth) AS (
+        SELECT id, 0 FROM task
+        WHERE dependent_id = 3
+    UNION ALL
+        SELECT task.id, traverse.depth + 1 FROM task
+        INNER JOIN traverse
+        ON task.dependent_id = traverse.id
+)
+SELECT id FROM traverse
+ORDER BY depth DESC;
